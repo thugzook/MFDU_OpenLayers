@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Using OpenLayers with Parcel</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+      }
+      .map {
+        position: relative;
+        height: 800px;
+        width: 600px;
+
+      }
+	  
+      .overlay {
+        visibility: hidden;
+        position: absolute;
+        height:150px;
+        width: 600px;
+        left: 0px;
+        bottom: 0px;
+        background-color: #555;
+        z-index: 100;
+      }
+
+      ul.info{
+        columns: 2;
+        -webkit-columns: 2;
+        -moz-columns: 2;
+        list-style: none;
+        text-transform: uppercase;
+        font-size: 20px;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="map1" class="map">
+		<div id="info" class="overlay">
+			<!--<p id="id">Tet</p>
+			<p id="alt">Tet</p>
+			<p id="plat">Tet</p>
+			<p id="model">Tet</p>
+      <p id="dent">Tet</p>
+      <p id="name">Tet</p>-->
+      <ul class="info">
+        <li id="alt">Tet</li>
+        <li id="plat">Tet</li>
+        <li id="model">Tet</li>
+        <li id="dent">Tet</li>
+        <li id="name">Tet</li>
+        <li>...</li>
+        <li>...</li>
+        <li>...</li>
+      </ul>
+		</div>
+	</div>
+    <script src="./sdg.js"></script>
+  </body>
+</html>

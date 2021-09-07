@@ -1,0 +1,119 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "+001",
+        "alt": "4000",
+        "plat": "BOMBER",
+        "model": "MIG-27D FLOGGER",
+        "dent": "HOSTILE",
+        "name": "S130",
+        "flightpath": [
+          [
+            -84.40059900283813,
+            33.77375197239593
+          ],
+          [
+            -84.39822793006896,
+            33.77454569113717
+          ],
+          [
+            -84.39772367477416,
+            33.77614202453971
+          ],
+          [
+            -84.3996012210846,
+            33.79
+          ]
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.40070629119873,
+          33.77368954476728
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "+100",
+        "alt": "4000",
+        "plat": "BOMBER",
+        "model": "MIG-27D FLOGGER",
+        "dent": "FRIENDLY",
+        "name": "P12"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.39894676208496,
+          33.77552668166753
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "model": "BFG",
+        "plat": "ORD",
+        "name": "OD1",
+        "color": "purple"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.40087795257568,
+          33.77648090713263
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "+23",
+        "alt": "4000",
+        "plat": "BOMBER",
+        "model": "MIG-27D FLOGGER",
+        "dent": "FRIENDLY",
+        "name": "AA130"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.40003037452698,
+          33.778246642109714
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "model": "BFG-2",
+        "plat": "ORD",
+        "name": "OD3",
+        "dent" : "HOSTILE",
+        "flightpath": [
+          [
+            -84.39420461654663,
+            33.77224477836728
+          ],
+          [
+            -84.40300226211548,
+            33.775571271879265
+          ]
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.39420461654663,
+          33.772075328859884
+        ]
+      }
+    }
+  ]
+}

@@ -19,11 +19,13 @@ import LineString from 'ol/geom/LineString';
 import { defaults, isEmpty, map } from 'lodash';
 import {defaults as defaultInteractions} from 'ol/interaction';
 import {click} from 'ol/events/condition';
+import {Circle as CircleGeom, Point} from 'ol/geom';
 
 import BOMBER from 'data-url:./icons/plane.png';
 import ORD from 'data-url:./icons/ordinance.png';
 import SELF from 'data-url:./icons/self.svg';
 import { oldlace } from 'color-name';
+import CircleStyle from 'ol/style/Circle';
 
 
 // Initialize globals
@@ -36,6 +38,8 @@ const otherLayer = new TileLayer({
 });
 const attributions = '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>';
 const GeoJsonSource = new VectorSource();
+const OverlaySource = new VectorSource();
+// Handles selecting features on map
 const select = new Select({
   condition: click
 });
@@ -46,6 +50,18 @@ const mousePositionControl = new MousePosition({
 const symbols = {"BOMBER" : BOMBER,
                     "ORD" : ORD,
                     "SELF" : SELF};
+// For overlaying features on top of the map (i.e. selection reticle)
+const selectionOverlay = new Feature({
+  geometry: new Point(fromLonLat([-84.39, 33.77])),
+
+});
+selectionOverlayStyle =new Style({
+  image: new CircleStyle({
+    radius: 20,
+    stroke: new Stroke({color: 'black', width: 3, lineDash: [6]})
+  })});
+selectionOverlay.setStyle(new Style(null));
+OverlaySource.addFeature(selectionOverlay);
 
 // fetch the json files
 function fetchData() {
@@ -202,6 +218,7 @@ var map1 = new Map({
 
 // Finalize map generation
 map1.addLayer(new VectorLayer({source: GeoJsonSource}));
+map1.addLayer(new VectorLayer({source: OverlaySource}));
 map1.on('postrender', fetchData); // setup network fetching
 map1.addInteraction(select);
 map1.on('pointermove', function(e) {
@@ -217,6 +234,7 @@ select.on('select', function(e) {
 
   if (selectedFeatures.getLength() == 0){
     document.getElementById("info").style.visibility = 'hidden';
+    selectionOverlay.setStyle(new Style(null));
   }
   else {
     selectedFeatures.forEach(function(feature) {
@@ -233,15 +251,10 @@ select.on('select', function(e) {
           if (element)
             document.getElementById(key).innerHTML = key + " : " + (properties[key] ? properties[key] : "N/A");
         }
-        /*var id = feature.getProperties()['id'];
-        var name = feature.getProperties()['name'];
-        var color = feature.getProperties()['color'];
-        document.getElementById("info").style.visibility = 'visible';
 
-        // Populate information
-        document.getElementById("type").innerHTML = type;
-        document.getElementById("id").innerHTML = id;
-        document.getElementById("name").innerHTML = name;*/
+        // move the selection to the clicked feature
+        selectionOverlay.setGeometry(properties["geometry"]);
+        selectionOverlay.setStyle(selectionOverlayStyle);
       }
     });
   }

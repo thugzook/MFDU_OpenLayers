@@ -2,6 +2,20 @@
   "type": "FeatureCollection",
   "features": [
     {
+        "type": "Feature",
+        "properties": {
+            "plat": "SELF",
+            "color": "black"
+        },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.40070629119873,
+          33.76908954476728
+        ]
+      }
+    },
+    {
       "type": "Feature",
       "properties": {
         "id": "+001",
@@ -12,7 +26,7 @@
         "name": "S130",
         "flightpath": [
           [
-            -84.40059900283813,
+            -84.4005900283813,
             33.77375197239593
           ],
           [

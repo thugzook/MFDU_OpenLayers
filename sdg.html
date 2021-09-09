@@ -18,11 +18,14 @@
       .overlay {
         visibility: hidden;
         position: absolute;
+        padding-left: 20px;
+        padding-right: 20px;
         height:150px;
-        width: 600px;
+        min-width: 560px;
+        max-width: 560px;
         left: 0px;
         bottom: 0px;
-        background-color: #555;
+        background-color: #000;
         z-index: 100;
       }
 
@@ -34,6 +37,11 @@
         text-transform: uppercase;
         font-size: 20px;
         color: white;
+        padding-left: 0px;
+        padding-right: 0px;
+        margin-right: 0px;
+        width: 560px;
+        max-width: 560px;
       }
     </style>
   </head>
@@ -55,7 +63,7 @@
         <li id="name">Tet</li>
         <li>...</li>
         <li>...</li>
-        <li>...</li>
+        <li id="loc">Tet</li>
       </ul>
 		</div>
 	</div>

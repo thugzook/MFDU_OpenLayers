@@ -12,9 +12,9 @@ import OSM from 'ol/source/OSM';
 import Icon from 'ol/style/Icon';
 import 'ol/ol.css';
 import {FullScreen, ScaleLine, defaults as defaultControls } from 'ol/control';
-import {createStringXY} from 'ol/coordinate';
-import Select from 'ol/interaction/Select';
-import {fromLonLat, transform} from 'ol/proj';
+import {createStringXY, toStringHDMS} from 'ol/coordinate';
+import Select, { SelectEvent } from 'ol/interaction/Select';
+import {fromLonLat, toLonLat} from 'ol/proj';
 import LineString from 'ol/geom/LineString';
 import { defaults, isEmpty, map } from 'lodash';
 import {defaults as defaultInteractions} from 'ol/interaction';
@@ -29,7 +29,6 @@ import CircleStyle from 'ol/style/Circle';
 
 
 // Initialize globals
-const osmSource = new OSM();
 const otherLayer = new TileLayer({
   source: new OSM({
     opaque: false,
@@ -88,9 +87,8 @@ function fetchData() {
       let name = properties["name"];
       let color = properties["color"];
 
-      // transform feature
+      // transform feature and apply stylings
       feature.getGeometry().transform('EPSG:4326', 'EPSG:3857');
-      
       switch(dent) {
         case("FRIENDLY"):
           feature.setStyle(styleFeature(symbols[plat], 'green', name, id));
@@ -127,10 +125,20 @@ function fetchData() {
                             "dent" : dent || '',
                             "name" : name || '',
                             });
-      GeoJsonSource.addFeature(feature);
-    });
-  });
 
+      // add feature to map
+      GeoJsonSource.addFeature(feature);
+    })
+  })
+  .then(function(){
+    // update the GUI, if needed
+    var event;
+    // update the info section
+    var info = document.getElementById("info");
+    if (info.style.visibility == 'visible')
+    {
+    }
+  });
   map1.render();
 }
 
@@ -179,22 +187,7 @@ function createFlightpathFeature(coordinates, color, width)
   return feature;
 }
 
-/*
-const circlePoints = [
-  new Feature({
-    geometry: new CircleGeom(fromLonLat([-84.39, 33.77]), 100)}),
-  new Feature({
-    geometry: new CircleGeom(fromLonLat([-84.39, 33.77]), 150)}),
-  new Feature({
-    geometry: new CircleGeom(fromLonLat([-84.39, 33.77]), 200)}),
-  ];
-
-circlePoints.forEach(v => v.setStyle(circleGeomStyle()));
-const vectorPoint2 = new Feature({
-  geometry: new Point(fromLonLat([-84.37, 33.77])),
-});
-vectorPoint2.setStyle(planeStyle());*/
-
+// Initialize the map
 var map1 = new Map({
   controls: defaultControls().extend([
     mousePositionControl,
@@ -207,10 +200,6 @@ var map1 = new Map({
     zoom: 15
   }),
   layers: [
-    new TileLayer({
-      attributions: attributions,
-      source: osmSource,
-      }),
     otherLayer,
   ]
 });
@@ -228,7 +217,7 @@ map1.on('pointermove', function(e) {
   }
 });
 
-// Display object information
+// Display feature information
 select.on('select', function(e) {
   var selectedFeatures = e.target.getFeatures();
 
@@ -245,12 +234,17 @@ select.on('select', function(e) {
 
         // populate html fields
         var properties = feature.getProperties();
+
         console.log(properties);
         for (var key in properties) {
           let element = document.getElementById(key);
           if (element)
             document.getElementById(key).innerHTML = key + " : " + (properties[key] ? properties[key] : "N/A");
         }
+        // populate the coordinates
+        let element = document.getElementById('loc');
+        let loc = toLonLat(feature.getGeometry().getCoordinates());
+        document.getElementById('loc').innerHTML = toStringHDMS(loc, 1);
 
         // move the selection to the clicked feature
         selectionOverlay.setGeometry(properties["geometry"]);
@@ -265,6 +259,9 @@ fetchData();
 
 let r = 0;
 setInterval(function() {
-  r = r + Math.PI/1000;
+  r = r + Math.PI/300;
   map1.getView().setRotation(r);
-}, 100000)
+  let coord = fromLonLat([-84.40070629119873,
+    33.76908954476728]);
+    map1.getView().setCenter(coord);
+}, 1000)

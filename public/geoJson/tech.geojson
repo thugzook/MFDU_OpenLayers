@@ -75,7 +75,8 @@
         "model": "BFG",
         "plat": "ORD",
         "name": "OD1",
-        "color": "purple"
+        "color": "purple",
+        "id": "+2"
       },
       "geometry": {
         "type": "Point",
@@ -109,6 +110,7 @@
         "model": "BFG-2",
         "plat": "ORD",
         "name": "OD3",
+        "id" : "+3",
         "dent" : "HOSTILE",
         "flightpath": [
           [

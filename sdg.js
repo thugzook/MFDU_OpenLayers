@@ -1,4 +1,4 @@
-import {Map, View} from 'ol';
+import {Map, View, Collection} from 'ol';
 import MousePosition from 'ol/control/MousePosition';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
@@ -28,27 +28,34 @@ import { oldlace } from 'color-name';
 import CircleStyle from 'ol/style/Circle';
 
 
-// Initialize globals
-const otherLayer = new TileLayer({
+////////////////////////////////
+//    Initialize globals     ///
+////////////////////////////////
+const REFRESH_RATE = 1000; // in ms
+const stamenLayer = new TileLayer({
   source: new OSM({
     opaque: false,
     url: 'http://a.tile.stamen.com/toner-lite/{z}/{x}/{y}.png'
   })
 });
-const attributions = '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>';
-const GeoJsonSource = new VectorSource();
-const OverlaySource = new VectorSource();
-// Handles selecting features on map
-const select = new Select({
-  condition: click
-});
-const mousePositionControl = new MousePosition({
-  coordinateFormat: createStringXY(4),
-  projection: 'EPSG:4326',
-});
 const symbols = {"BOMBER" : BOMBER,
                     "ORD" : ORD,
                     "SELF" : SELF};
+const attributions = '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>';
+const GeoJsonSource = new VectorSource(); // for features on the map
+const OverlaySource = new VectorSource(); // for displaying selected features
+var selectedFeatures;
+const mousePositionControl = new MousePosition({ //for displaying coordinates on mouse position
+  coordinateFormat: createStringXY(4),
+  projection: 'EPSG:4326',
+});
+
+////////////////////////////////////////////
+//    Handles for feature selections     ///
+////////////////////////////////////////////
+const select = new Select({
+  condition: click
+});
 // For overlaying features on top of the map (i.e. selection reticle)
 const selectionOverlay = new Feature({
   geometry: new Point(fromLonLat([-84.39, 33.77])),
@@ -62,21 +69,31 @@ selectionOverlayStyle =new Style({
 selectionOverlay.setStyle(new Style(null));
 OverlaySource.addFeature(selectionOverlay);
 
-// fetch the json files
+
+/**
+ * Fetches GeoJSON data from an API endpoint using an HTTP Request (.fetch())
+ * https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+ * 
+ * Initiates the fetch() promise to draw features onto our map
+ */
 function fetchData() {
   fetch('http://localhost:3000/geoJson/tech.geojson', {mode: 'cors'})
   .then(function(response) {
     return response.json();
   })
+  /**
+   * Uses GeoJSON properties to generate features, style them, and add properties to them on the map
+   * 
+   * @param {json}
+   */
   .then(function(json) {
     // Read features, clear the current layer features
     const format = new GeoJSON();
     const features = format.readFeatures(json);
     GeoJsonSource.clear();
 
-    // retrieve the type of the GeoJSON geometry
     features.forEach(function(feature){
-      // map the feature properties
+      // Map the feature properties
       let properties = feature.getProperties();
 
       let id = properties["id"];
@@ -87,7 +104,7 @@ function fetchData() {
       let name = properties["name"];
       let color = properties["color"];
 
-      // transform feature and apply stylings
+      // Transform feature from EPSG:4326 to EPSG:3857 coordinates and apply stylings
       feature.getGeometry().transform('EPSG:4326', 'EPSG:3857');
       switch(dent) {
         case("FRIENDLY"):
@@ -101,6 +118,7 @@ function fetchData() {
           break;
       }
 
+      // Generate flightpath if applicable, and rotate the feature toward the next valid waypoint
       if (!isEmpty(feature.getProperties()["flightpath"]))
       {
         // Create a line string to represent the flight path
@@ -117,7 +135,7 @@ function fetchData() {
         GeoJsonSource.addFeature(flightPathFeature);
       }
 
-      // set properties to null if not exist
+      // Set feature properties to null if not exist
       feature.setProperties({"id": id || '',
                             "alt": alt || '',
                             "plat": plat || '',
@@ -125,23 +143,39 @@ function fetchData() {
                             "dent" : dent || '',
                             "name" : name || '',
                             });
+      feature.setId(id || name);
 
       // add feature to map
       GeoJsonSource.addFeature(feature);
     })
   })
+  /**
+   * Updates the GUI if needed, which sits on top of the OpenLayers
+   */
   .then(function(){
-    // update the GUI, if needed
-    var event;
-    // update the info section
+    // Update the info section
     var info = document.getElementById("info");
     if (info.style.visibility == 'visible')
     {
+      // get the feature by its ID
+      let feature = GeoJsonSource.getFeatureById(selectedFeatures.item(0).getId());
+      // Send the feature as a collection to handleSelectioN()
+      handleSelection(new Collection([feature]));
     }
   });
   map1.render();
+  setTimeout(fetchData, REFRESH_RATE); // fetch data again after some time
 }
 
+/**
+ * Returns a style based on the feature's properties
+ * 
+ * @param {*} src - An image import
+ * @param {string} color - Color in string, hex or rgba() format
+ * @param {string} bottomText
+ * @param {string} topText
+ * @return {Style}
+ */
 function styleFeature(src, color, bottomText, topText) {
   return [new Style({
             image: new Icon({
@@ -170,6 +204,14 @@ function styleFeature(src, color, bottomText, topText) {
       ];
 }
 
+/**
+ * Transforms flightpath coordinates to a feature on the map
+ * 
+ * @param {Coordinate} coordinates
+ * @param {string} color - Color in string, hex or rgba() format
+ * @param {number} width
+ * @return {LineString} feature
+ */
 function createFlightpathFeature(coordinates, color, width)
 {
   // convert the coordinates to a valid LineString()
@@ -187,40 +229,14 @@ function createFlightpathFeature(coordinates, color, width)
   return feature;
 }
 
-// Initialize the map
-var map1 = new Map({
-  controls: defaultControls().extend([
-    mousePositionControl,
-    new FullScreen(),
-  ]),
-  interactions: defaultInteractions({doubleClickZoom: false}),
-  target: 'map1',
-  view: new View({
-    center: fromLonLat([-84.39, 33.77]),
-    zoom: 15
-  }),
-  layers: [
-    otherLayer,
-  ]
-});
-
-
-// Finalize map generation
-map1.addLayer(new VectorLayer({source: GeoJsonSource}));
-map1.addLayer(new VectorLayer({source: OverlaySource}));
-map1.on('postrender', fetchData); // setup network fetching
-map1.addInteraction(select);
-map1.on('pointermove', function(e) {
-  if (!e.dragging){
-    var pixel = map1.getEventPixel(e.originalEvent);
-    map1.getTargetElement().style.cursor = map1.hasFeatureAtPixel(pixel) ? 'pointer': '';
-  }
-});
-
-// Display feature information
-select.on('select', function(e) {
-  var selectedFeatures = e.target.getFeatures();
-
+/**
+ * Extracts properties out of a selected feature and populates fields in the HUD with information
+ * Sets feature style & geometry
+ * 
+ * @param {Collection} selectedFeatures - Collection of an array of features
+ */
+function handleSelection(selectedFeatures)
+{
   if (selectedFeatures.getLength() == 0){
     document.getElementById("info").style.visibility = 'hidden';
     selectionOverlay.setStyle(new Style(null));
@@ -235,7 +251,7 @@ select.on('select', function(e) {
         // populate html fields
         var properties = feature.getProperties();
 
-        console.log(properties);
+        // console.log(properties);
         for (var key in properties) {
           let element = document.getElementById(key);
           if (element)
@@ -252,16 +268,53 @@ select.on('select', function(e) {
       }
     });
   }
+}
+
+// Initialize the map
+var map1 = new Map({
+  controls: defaultControls().extend([
+    mousePositionControl,
+    new FullScreen(),
+  ]),
+  interactions: defaultInteractions({doubleClickZoom: false}),
+  target: 'map1',
+  view: new View({
+    center: fromLonLat([-84.39, 33.77]),
+    zoom: 15
+  }),
+  layers: [
+    stamenLayer,
+  ]
 });
 
 
+// Finalize map generation
+map1.addLayer(new VectorLayer({source: GeoJsonSource}));
+map1.addLayer(new VectorLayer({source: OverlaySource}));
+map1.addInteraction(select);
+map1.on('pointermove', function(e) {
+  if (!e.dragging){
+    var pixel = map1.getEventPixel(e.originalEvent);
+    map1.getTargetElement().style.cursor = map1.hasFeatureAtPixel(pixel) ? 'pointer': '';
+  }
+});
+
+// Display feature information
+select.on('select', function(e) {
+  selectedFeatures = e.target.getFeatures();
+
+  handleSelection(selectedFeatures);
+});
+
+// Begin data gathering
 fetchData();
 
 let r = 0;
 setInterval(function() {
-  r = r + Math.PI/300;
+  r = r % (Math.PI * 2) + Math.PI / 300;
   map1.getView().setRotation(r);
+  console.log(map1.getView().getRotation());
   let coord = fromLonLat([-84.40070629119873,
     33.76908954476728]);
-    map1.getView().setCenter(coord);
+    //map1.getView().setCenter(coord);
 }, 1000)

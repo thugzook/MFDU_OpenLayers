@@ -95,7 +95,6 @@ function fetchData() {
     features.forEach(function(feature){
       // Map the feature properties
       let properties = feature.getProperties();
-
       let id = properties["id"];
       let alt = properties["alt"];
       let plat = properties["plat"];
@@ -106,6 +105,7 @@ function fetchData() {
 
       // Transform feature from EPSG:4326 to EPSG:3857 coordinates and apply stylings
       feature.getGeometry().transform('EPSG:4326', 'EPSG:3857');
+
       switch(dent) {
         case("FRIENDLY"):
           feature.setStyle(styleFeature(symbols[plat], 'green', name, id));
@@ -118,19 +118,36 @@ function fetchData() {
           break;
       }
 
+      // Rotate icon based on map rotation as long as feature != SELF
+      if (plat != "SELF")
+      {
+        let image = feature.getStyle()[0].getImage();
+        image.setRotateWithView(true);
+      }
+
       // Generate flightpath if applicable, and rotate the feature toward the next valid waypoint
       if (!isEmpty(feature.getProperties()["flightpath"]))
       {
-        // Create a line string to represent the flight path
-        var flightPath = new LineString(properties["flightpath"]);
-        var flightPathFeature = createFlightpathFeature(flightPath, 'red');
+        // coords = [feature's geometry  +   geometry of flightpath]
+        let currentLoc = [toLonLat(feature.getGeometry().getCoordinates())];
+        let coords = currentLoc.concat(feature.getProperties()["flightpath"]);
+        
+        // Create a LineString representing the flightpath and style it
+        let flightPath = new LineString(coords);
+        let flightPathFeature = createFlightpathFeature(flightPath, 'red');
 
-        // calculate the image rotation based on its trajectory
-        /*let currCoord = feature.getGeometry();
-        let nextCoord = flightPath.getCoordinates()[1];
-        let rads = Math.atan2((nextCoord[0] - currCoord[0]), (nextCoord[1] - currCoord[1]));
-        console.log(feature.getStyle()[0].getImage().setRotation(Math.PI / 2));
-        console.log(flightPath.getCoordinates()[1]);*/
+        // Calculate the image rotation based on its trajectory
+        let nextCoord = coords[1];
+        let delta_x = nextCoord[0] - currentLoc[0][0]; // currentLoc is an Array object, so deference it first
+        let delta_y = nextCoord[1] - currentLoc[0][1];
+        // console.log("x: " + delta_x + " y: " + delta_y);
+        // console.log("radians: " + Math.atan2(delta_y, delta_x));
+        let rotation = Math.atan2(delta_y, delta_x); // use atan2 to get the angle between positive x-axis
+
+        // Rotate the image
+        let image = feature.getStyle()[0].getImage();
+        image.setRotation(Math.PI/2 - rotation);
+        image.setRotateWithView(true);
 
         GeoJsonSource.addFeature(flightPathFeature);
       }
@@ -154,7 +171,7 @@ function fetchData() {
    */
   .then(function(){
     // Update the info section
-    var info = document.getElementById("info");
+    let info = document.getElementById("info");
     if (info.style.visibility == 'visible')
     {
       // get the feature by its ID
@@ -311,9 +328,9 @@ fetchData();
 
 let r = 0;
 setInterval(function() {
-  r = r % (Math.PI * 2) + Math.PI / 300;
+  r = r % (Math.PI * 2) + Math.PI / 100;
   map1.getView().setRotation(r);
-  console.log(map1.getView().getRotation());
+  // console.log(map1.getView().getRotation());
   let coord = fromLonLat([-84.40070629119873,
     33.76908954476728]);
     //map1.getView().setCenter(coord);

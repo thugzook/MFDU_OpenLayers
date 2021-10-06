@@ -32,14 +32,10 @@
             "latitude": 33.77454569113717
           },
           {
-            "time": 1,
-            "altitude": 4,
             "longitude": -84.39772367477416,
             "latitude": 33.77614202453971
           },
           {
-            "time": 2,
-            "altitude": 5,
             "longitude": -84.3996012210846,
             "latitude": 33.79
           }
@@ -116,8 +112,6 @@
         "dent" : "HOSTILE",
         "flightpath": [
           {
-           "time": 0,
-           "altitude": 3,
            "longitude": -84.40300226211548,
            "latitude": 33.775571271879265
           }

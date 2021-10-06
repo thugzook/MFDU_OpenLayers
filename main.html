@@ -14,7 +14,12 @@
         width: 600px;
 
       }
-	  
+
+      button:active {
+        background-color: greenyellow;
+        
+      }
+
       .overlay {
         visibility: hidden;
         position: absolute;
@@ -27,6 +32,21 @@
         bottom: 0px;
         background-color: #000;
         z-index: 100;
+      }
+
+      .zoom-controls {
+        position: absolute;
+        margin-left: 20px;
+        margin-top: 20px;
+        height: 40px;
+        width: 40px;
+        left: 0px;
+        top: 0px;
+        color: white;
+        background-color: #000;
+        font-family: "Lucida Console", "Courier New", monospace;
+        z-index: 100;
+        font-size: 1em;
       }
 
       ul.info{
@@ -66,7 +86,10 @@
         <li id="loc">Tet</li>
       </ul>
 		</div>
+
+    <!-- Map Controls -->
+    <button class="zoom-controls">+</div>
 	</div>
-    <script src="./sdg.js"></script>
+    <script src="./main.js"></script>
   </body>
 </html>

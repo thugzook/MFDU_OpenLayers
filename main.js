@@ -1,214 +1,386 @@
-import {Map, View} from 'ol';
-import {fromLonLat} from 'ol/proj';
+import {Map, View, Collection} from 'ol';
 import MousePosition from 'ol/control/MousePosition';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
 import {Style, Fill, Stroke, Text} from 'ol/style';
 import Stroke from 'ol/style/Stroke';
-import CircleStyle from 'ol/style/Circle';
-import CircleGeom from 'ol/geom/Circle';
 import Feature from 'ol/Feature';
-import { GeometryFunction } from 'ol/style/Style';
 import Fill from 'ol/style/Fill';
 import TileLayer from 'ol/layer/Tile';
-import TileJSON from 'ol/source/TileJSON';
-import circular from 'ol/geom/Polygon';
-import TileWMS from 'ol/source/TileWMS';
-import geometry from 'ol/geom/Geometry';
 import OSM from 'ol/source/OSM';
-import { getArea, getDistance } from 'ol/sphere';
+import Icon from 'ol/style/Icon';
 import 'ol/ol.css';
-import {ScaleLine, defaults as defaultControls } from 'ol/control';
-import {createStringXY} from 'ol/coordinate';
-import { Point } from 'ol/geom';
-import { array } from 'assert-plus';
+import {FullScreen, ScaleLine, defaults as defaultControls } from 'ol/control';
+import {createStringXY, toStringHDMS} from 'ol/coordinate';
+import Select, { SelectEvent } from 'ol/interaction/Select';
+import {fromLonLat, toLonLat} from 'ol/proj';
+import LineString from 'ol/geom/LineString';
+import { defaults, isEmpty, map } from 'lodash';
+import {defaults as defaultInteractions} from 'ol/interaction';
+import {click} from 'ol/events/condition';
+import {Circle as CircleGeom, Point} from 'ol/geom';
 
-const view = new View({
-  center: [-111.8, 40.7],
-  zoom: 12,
+import BOMBER from 'data-url:./icons/plane.png';
+import ORD from 'data-url:./icons/ordinance.png';
+import SELF from 'data-url:./icons/self.svg';
+import { oldlace } from 'color-name';
+import CircleStyle from 'ol/style/Circle';
+
+
+////////////////////////////////
+//    Initialize globals     ///
+////////////////////////////////
+const REFRESH_RATE = 1000; // in ms
+const stamenLayer = new TileLayer({
+  source: new OSM({
+    opaque: false,
+    url: 'http://a.tile.stamen.com/toner-lite/{z}/{x}/{y}.png'
+  })
 });
-
-const mousePositionControl = new MousePosition({
+const symbols = {"BOMBER" : BOMBER,
+                    "ORD" : ORD,
+                    "SELF" : SELF};
+const attributions = '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>';
+const GeoJsonSource = new VectorSource(); // for features on the map
+const OverlaySource = new VectorSource(); // for displaying selected features
+var selectedFeatures;
+const mousePositionControl = new MousePosition({ //for displaying coordinates on mouse position
   coordinateFormat: createStringXY(4),
   projection: 'EPSG:4326',
 });
 
-const osmSource = new OSM();
-const attributions = '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>';
+////////////////////////////////////////////
+//    Handles for feature selections     ///
+////////////////////////////////////////////
+const select = new Select({
+  condition: click
+});
+// For overlaying features on top of the map (i.e. selection reticle)
+const selectionOverlay = new Feature({
+  geometry: new Point(fromLonLat([-84.39, 33.77])),
 
-function pointStyleFunction(color, radius) {
-  return new Style({
-    image: new CircleStyle({
-      radius: radius || 30,
-      fill: new Fill({color: color || 'rgba(0, 0, 255, 0.1)'}),
-      stroke: new Stroke({color: 'blue', width: 1}),
-    }),
-    text: new Text({
-      text: 'Test'
-    })
-  });
-}
+});
+selectionOverlayStyle =new Style({
+  image: new CircleStyle({
+    radius: 20,
+    stroke: new Stroke({color: 'black', width: 3, lineDash: [6]})
+  })});
+selectionOverlay.setStyle(new Style(null));
+OverlaySource.addFeature(selectionOverlay);
 
-function circleGeomStyle() {
-  return new Style({
-    stroke: new Stroke({
-      color: 'blue',
-      width: '3'
-    }),
-    fill: new Fill({
-      color: 'rgba(255, 0, 0, 0.1)'
-    }),
-    text: new Text({
-      text: 'test',
-      textBaseline: 'bottom',
-      textAlign: 'left',
-      placement: 'line'
+
+/**
+ * Fetches GeoJSON data from an API endpoint using an HTTP Request (.fetch())
+ * https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+ * 
+ * Initiates the fetch() promise to draw features onto our map
+ */
+function fetchData() {
+  fetch('http://localhost:3000/geoJson/tech.geojson', {mode: 'cors'})
+  .then(function(response) {
+    return response.json();
+  })
+  /**
+   * Uses GeoJSON properties to generate features, style them, and add properties to them on the map
+   * 
+   * @param {json}
+   */
+  .then(function(json) {
+    // Read features, clear the current layer features
+    const format = new GeoJSON();
+    const features = format.readFeatures(json);
+    GeoJsonSource.clear();
+
+    features.forEach(function(feature){
+      // Map the feature properties
+      let properties = feature.getProperties();
+      let id = properties["id"];
+      let alt = properties["alt"];
+      let plat = properties["plat"];
+      let model = properties["model"];
+      let dent = properties["dent"];
+      let name = properties["name"];
+      let color = properties["color"];
+
+      // Transform feature from EPSG:4326 to EPSG:3857 coordinates and apply stylings
+      feature.getGeometry().transform('EPSG:4326', 'EPSG:3857');
+
+      switch(dent) {
+        case("FRIENDLY"):
+          feature.setStyle(styleFeature(symbols[plat], 'green', name, id));
+          break;
+        case("HOSTILE"):
+          feature.setStyle(styleFeature(symbols[plat], 'red', name, id));
+          break;
+        default:
+          feature.setStyle(styleFeature(symbols[plat], color , name, id));
+          break;
+      }
+
+      // Rotate icon based on map rotation as long as feature != SELF
+      if (plat != "SELF")
+      {
+        let image = feature.getStyle()[0].getImage();
+        image.setRotateWithView(true);
+      }
+
+      // Generate flightpath if applicable, and rotate the feature toward the next valid waypoint
+      if (!isEmpty(feature.getProperties()["flightpath"]))
+      {
+        /**
+         * Retrieve key/value pairs from flightpath
+         */
+        // Get [lat, long] from flightpath
+        let getCoordsFromFlightpath = (function() {
+          function returnCoordinates(array) {
+            let coordinates = [];
+            array.forEach(element => coordinates.push([element.longitude, element.latitude]));
+            return coordinates;
+          }
+
+          return returnCoordinates; // getCoordsFromFlightpath is now function returnCoordinates(...)
+        })();
+
+        // Get time from flightpaths
+        let getTimesFromFlightpath = (function() {
+          function returnTimes(array) {
+            let times = [];
+            array.forEach(element => times.push(element.time));
+            return times;
+          }
+
+          return returnTimes;
+        })();
+
+        // Get altitude from flightpaths
+        let getAltitudeFromFlightpath = (function() {
+          function returnAltitudes(array) {
+            let altitudes = [];
+            array.forEach(element => altitudes.push(element.altitude));
+            return altitudes;
+          }
+
+          return returnAltitudes;
+        })();
+
+        // Calculate the flightpaths from feature origin to its next waypoint
+        let currentLoc = [toLonLat(feature.getGeometry().getCoordinates())];
+        let flightpathProps = feature.getProperties()["flightpath"];
+        let flightpathCoords = currentLoc.concat(getCoordsFromFlightpath(flightpathProps));
+        // console.log(flightpathCoords);
+        // console.log(getTimesFromFlightpath(flightpathProps));
+        // console.log(getAltitudeFromFlightpath(flightpathProps));
+        
+        // Create a LineString representing the flightpath and style it
+        let flightPath = new LineString(flightpathCoords);
+        let flightPathFeature = createFlightpathFeature(flightPath, 'red');
+
+        // Calculate the image rotation based on its trajectory
+        let nextCoord = flightpathCoords[1];
+        let delta_x = nextCoord[0] - currentLoc[0][0]; // currentLoc is an Array object, so deference it first
+        let delta_y = nextCoord[1] - currentLoc[0][1];
+        // console.log("x: " + delta_x + " y: " + delta_y);
+        // console.log("radians: " + Math.atan2(delta_y, delta_x));
+        let rotation = Math.atan2(delta_y, delta_x); // use atan2 to get the angle between positive x-axis
+
+        // Rotate the image
+        let image = feature.getStyle()[0].getImage();
+        image.setRotation(Math.PI/2 - rotation);
+        image.setRotateWithView(true);
+
+        GeoJsonSource.addFeature(flightPathFeature);
+      }
+
+      // Set feature properties to null if not exist
+      feature.setProperties({"id": id || '',
+                            "alt": alt || '',
+                            "plat": plat || '',
+                            "model": model || '',
+                            "dent" : dent || '',
+                            "name" : name || '',
+                            });
+      feature.setId(id || name);
+
+      // add feature to map
+      GeoJsonSource.addFeature(feature);
     })
   })
+  /**
+   * Updates the GUI if needed, which sits on top of the OpenLayers
+   */
+  .then(function(){
+    // Update the info section
+    let info = document.getElementById("info");
+    if (info.style.visibility == 'visible')
+    {
+      // get the feature by its ID
+      let feature = GeoJsonSource.getFeatureById(selectedFeatures.item(0).getId());
+      // Send the feature as a collection to handleSelectioN()
+      handleSelection(new Collection([feature]));
+    }
+  });
+  map1.render();
+  setTimeout(fetchData, REFRESH_RATE); // fetch data again after some time
 }
 
-const circlePoints = [
-  new Feature({
-    geometry: new CircleGeom([-111.8, 40.7], 0.05)}),
-  new Feature({
-    geometry: new CircleGeom([-111.8, 40.7], 0.08)}),
-  new Feature({
-    geometry: new CircleGeom([-111.8, 40.7], 0.1)}),
-  ];
+/**
+ * Returns a style based on the feature's properties
+ * 
+ * @param {*} src - An image import
+ * @param {string} color - Color in string, hex or rgba() format
+ * @param {string} bottomText
+ * @param {string} topText
+ * @return {Style}
+ */
+function styleFeature(src, color, bottomText, topText) {
+  return [new Style({
+            image: new Icon({
+            color: color || 'white',
+            crossOrigin: 'anonymous',
+            scale: 0.3,
+            src: src
+          }),
+            text: new Text({
+            text: bottomText || '',
+            offsetY: '40',
+            fill: new Fill({color: '#39FF14'}),
+            stroke: new Stroke({width: 3}),
+            font: '20px monospace'
+          }),
+        }),
+          new Style({
+            text: new Text({
+            text: topText || '',
+            offsetY: '-40',
+            fill: new Fill({color: '#39FF14'}),
+            stroke: new Stroke({width: 3}),
+            font: '20px monospace'
+          }),
+        })
+      ];
+}
 
-circlePoints.forEach(v => v.setStyle(circleGeomStyle()));
-const vectorPoint2 = new Feature({
-  geometry: new Point([-111.7, 40.7]),
+/**
+ * Transforms flightpath coordinates to a feature on the map
+ * 
+ * @param {Coordinate} coordinates
+ * @param {string} color - Color in string, hex or rgba() format
+ * @param {number} width
+ * @return {LineString} feature
+ */
+function createFlightpathFeature(coordinates, color, width)
+{
+  // convert the coordinates to a valid LineString()
+  var path = coordinates;
+  // add to the map
+  path.transform('EPSG:4326', 'EPSG:3857');
+  var feature = new Feature({geometry: path});
+  feature.setStyle(new Style({
+    stroke: new Stroke({ 
+      width: width || 3, 
+      color: color || 'red'
+    })
+  }));
+
+  return feature;
+}
+
+/**
+ * Extracts properties out of a selected feature and populates fields in the HUD with information
+ * Sets feature style & geometry
+ * 
+ * @param {Collection} selectedFeatures - Collection of an array of features
+ */
+function handleSelection(selectedFeatures)
+{
+  if (selectedFeatures.getLength() == 0){
+    document.getElementById("info").style.visibility = 'hidden';
+    selectionOverlay.setStyle(new Style(null));
+  }
+  else {
+    selectedFeatures.forEach(function(feature) {
+      var model = feature.getProperties()["model"];
+      // Make sure our selected feature is an icon
+      if (model) {
+        document.getElementById("info").style.visibility = 'visible';
+
+        // populate html fields
+        var properties = feature.getProperties();
+
+        // console.log(properties);
+        for (var key in properties) {
+          let element = document.getElementById(key);
+          if (element)
+            document.getElementById(key).innerHTML = key + " : " + (properties[key] ? properties[key] : "N/A");
+        }
+        // populate the coordinates
+        let element = document.getElementById('loc');
+        let loc = toLonLat(feature.getGeometry().getCoordinates());
+        document.getElementById('loc').innerHTML = toStringHDMS(loc, 1);
+
+        // move the selection to the clicked feature
+        selectionOverlay.setGeometry(properties["geometry"]);
+        selectionOverlay.setStyle(selectionOverlayStyle);
+      }
+    });
+  }
+}
+
+/**
+ * Initialize the map, including map layers and interactions
+ */
+var map1 = new Map({
+  controls: defaultControls().extend([
+    mousePositionControl,
+    new FullScreen(),
+  ]),
+  controls: defaultControls({
+    attribution: false,
+    zoom: false,
+    rotate: false
+  }),
+  interactions: defaultInteractions({doubleClickZoom: false}),
+  target: 'map1',
+  view: new View({
+    center: fromLonLat([-84.39, 33.77]),
+    zoom: 15
+  }),
+  layers: [
+    stamenLayer,
+  ]
 });
-vectorPoint2.setStyle(pointStyleFunction());
+
+
+/**
+ * Finalize map generation
+ */ 
+map1.addLayer(new VectorLayer({source: GeoJsonSource}));
+map1.addLayer(new VectorLayer({source: OverlaySource}));
+map1.addInteraction(select);
+map1.on('pointermove', function(e) {
+  if (!e.dragging){
+    var pixel = map1.getEventPixel(e.originalEvent);
+    map1.getTargetElement().style.cursor = map1.hasFeatureAtPixel(pixel) ? 'pointer': '';
+  }
+});
+
+// Display feature information
+select.on('select', function(e) {
+  selectedFeatures = e.target.getFeatures();
+
+  handleSelection(selectedFeatures);
+});
+
+// Begin data gathering
+fetchData();
 
 let r = 0;
 setInterval(function() {
-  r = r + Math.PI/100;
+  r = r % (Math.PI * 2) + Math.PI / 100;
   map1.getView().setRotation(r);
-  map1.getView().setCenter(view.getCenter());
-}, 100000)
-
-var map1 = new Map({
-  controls: defaultControls().extend([
-    new ScaleLine({
-      units: 'metric',
-    }),
-    mousePositionControl
-  ]),
-  target: 'map1',
-  view: view /*new View({
-    projection: 'EPSG:3857', //HERE IS THE VIEW PROJECTION
-    center: [0, 0],
-    zoom: 2
-  })*/,
-  layers: [
-    new TileLayer({
-      attributions: attributions,
-      source: osmSource,
-      }),
-    new VectorLayer({
-      source: new VectorSource({
-        features: circlePoints.concat(vectorPoint2)
-      })
-    }),
-    new VectorLayer({
-      source: new VectorSource({
-        url: 'https://opendata.arcgis.com/datasets/c57777877aa041ecaef98ff2519aabf6_68.geojson',
-        format: new GeoJSON()
-      }),
-      style: pointStyleFunction('red')
-    })
-  ]
-});
-
-var map2 = new Map({
-  target: 'map2',
-  view: view/*new View({
-    projection: 'EPSG:4326', //HERE IS THE VIEW PROJECTION
-    center: [0, 0],
-    zoom: 2
-  })*/,
-  layers: [
-    /*new TileLayer({
-      attributions: attributions,
-      source: new TileWMS({
-        projection: 'EPSG:4326', //HERE IS THE DATA SOURCE PROJECTION
-        url: 'https://ahocevar.com/geoserver/wms',
-        params: {
-          'LAYERS': 'ne:NE1_HR_LC_SR_W_DR'
-        }
-      })
-    })*/
-    new TileLayer({
-      source: new TileJSON({
-        url: 'https://a.tiles.mapbox.com/v3/aj.1x1-degrees.json?secure=1',
-        crossOrigin: '',
-      })
-    })
-  ]
-});
-
-var centerLongitudeLatitude = fromLonLat([-117.1610838, 32.715738]);
-
-var map3 = new Map({
-  target: 'map3',
-  layers: [
-    new TileLayer({
-      source: osmSource
-    })
-  ],
-  view: new View({
-    projection: 'EPSG:4326',
-    center: centerLongitudeLatitude,
-    zoom: 12
-  })
-});
-
-/* PROJECTION */
-/*
-var center = centerLongitudeLatitude;
-var radius = 100;
-var edgeCoordinate = [center[0] + radius, center[1]];
-var area = getArea(Polygon);
-var distance = getDistance('EPSG:3857', 'EPSG:4326');
-var groundRadius = wgs84Sphere.haversineDistance(
-    ol.proj.transform(center, 'EPSG:3857', 'EPSG:4326'), 
-    ol.proj.transform(edgeCoordinate, 'EPSG:3857', 'EPSG:4326')
-);
-var circularPolygon = circular(wgs84Sphere, center, radius, 64);
-
-var layer = new VectorLayer({
-  source: new VectorSource({
-    features: [new Feature(new Circle(centerLongitudeLatitude, 4)), 
-      new Feature(new Circle(centerLongitudeLatitude, 6))]
-  }),
-  style: [
-    new Style({
-      stroke: new Stroke({
-        color: 'blue',
-        width: 3
-      }),
-      fill: new Fill({
-        color: 'rgba(0, 0, 255, 0.05)'
-      })
-    })
-  ]
-});
-map3.addLayer(layer);
-
-map3.getLayers*/
-/*proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 ' +
-    '+x_0=400000 +y_0=-100000 +ellps=airy ' +
-    '+towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 ' +
-    '+units=m +no_defs');
-register(proj4);
-var proj27700 = getProjection('EPSG:27700');
-proj27700.setExtent([0, 0, 700000, 1300000]);
-
-map.setView(new View({
-  projection: 'EPSG:27700',
-  center: [400000, 650000],
-  zoom: 4
-}));*/
+  // console.log(map1.getView().getRotation());
+  let coord = fromLonLat([-84.40070629119873,
+    33.76908954476728]);
+  map1.getView().setCenter(coord);
+}, 1000)

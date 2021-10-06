@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "OpenLayers test",
   "scripts": {
-    "start": "parcel serve sdg.html",
-    "build": "parcel build --public-url . sdg.html"
+    "start": "parcel serve main.html",
+    "build": "parcel build --public-url . main.html"
   },
   "dependencies": {
     "browser-sync": "^2.27.5",

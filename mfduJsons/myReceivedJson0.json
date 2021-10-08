@@ -1,0 +1,1 @@
+{"multiviList":[{"time":2.1,"droneNum":1,"flightpathList":[{"time":7.1,"valid":true,"altitude":1.1,"latitude":1.2,"longitude":1.3},{"time":7.1,"valid":true,"altitude":1.1,"latitude":1.2,"longitude":1.3}],"velocity":{"x":0.1,"y":0.2,"z":0.3},"positionCovarianceList":[],"velocityCovarianceList":[],"positionCovarianceType":1,"velocityCovarianceType":1}]}

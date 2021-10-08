@@ -10,6 +10,7 @@
     "browser-sync": "^2.27.5",
     "cors": "^2.8.5",
     "express": "^4.17.1",
+    "google-protobuf": "^3.18.1",
     "nodemon": "^2.0.12",
     "ol": "^6.5.0",
     "proj4": "^2.7.4",

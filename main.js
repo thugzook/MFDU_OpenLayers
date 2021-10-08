@@ -39,6 +39,7 @@ const stamenLayer = new TileLayer({
   })
 });
 const symbols = {"BOMBER" : BOMBER,
+                    "DRONE" : BOMBER,
                     "ORD" : ORD,
                     "SELF" : SELF};
 const attributions = '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>';
@@ -77,7 +78,7 @@ OverlaySource.addFeature(selectionOverlay);
  * Initiates the fetch() promise to draw features onto our map
  */
 function fetchData() {
-  fetch('http://localhost:3000/geoJson/tech.geojson', {mode: 'cors'})
+  fetch('http://localhost:3000/geoJson/mfduJson.geojson', {mode: 'cors'})
   .then(function(response) {
     return response.json();
   })
@@ -234,6 +235,10 @@ function fetchData() {
  * @return {Style}
  */
 function styleFeature(src, color, bottomText, topText) {
+  // Convert parameters to string if needed
+  bottomText = String(bottomText);
+  topText = String(topText);
+
   return [new Style({
             image: new Icon({
             color: color || 'white',
@@ -302,7 +307,7 @@ function handleSelection(selectedFeatures)
     selectedFeatures.forEach(function(feature) {
       var model = feature.getProperties()["model"];
       // Make sure our selected feature is an icon
-      if (model) {
+      if (/*model*/ true) {
         document.getElementById("info").style.visibility = 'visible';
 
         // populate html fields
@@ -343,8 +348,8 @@ var map1 = new Map({
   interactions: defaultInteractions({doubleClickZoom: false}),
   target: 'map1',
   view: new View({
-    center: fromLonLat([-84.39, 33.77]),
-    zoom: 15
+    center: [0, 0],//fromLonLat([-84.39, 33.77]),
+    zoom: 5
   }),
   layers: [
     stamenLayer,
@@ -376,11 +381,11 @@ select.on('select', function(e) {
 fetchData();
 
 let r = 0;
-setInterval(function() {
+/*setInterval(function() {
   r = r % (Math.PI * 2) + Math.PI / 100;
   map1.getView().setRotation(r);
   // console.log(map1.getView().getRotation());
   let coord = fromLonLat([-84.40070629119873,
     33.76908954476728]);
   map1.getView().setCenter(coord);
-}, 1000)
+}, 1000)*/

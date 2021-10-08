@@ -23,4 +23,14 @@ To run the static vector file server:
 
 Dependencies
 * proj4 - used for WGS84 projection coordinate transformations# MFDU_OpenLayers
+* google protobuf
+* nodemon
+* express
+* parcel
+
 # MFDU_OpenLayers
+Omitted from the Repo
+* GTRI-proprietary software and technology
+
+Uses Parcel to host an OpenLayers application. Serve static .geoJson files from an express server. Receive FACE compliant geographical data through a google protobuf server and parse locally using OpenLayers/Js.
+![MFDU](documentation/images/mfduServer.png)

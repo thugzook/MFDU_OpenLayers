@@ -144,14 +144,14 @@ function fetchData() {
         })();
 
         // Get time from flightpaths
-        let getTimesFromFlightpath = (function() {
-          function returnTimes(array) {
-            let times = [];
-            array.forEach(element => times.push(element.time));
-            return times;
+        let getPropFromFlightpath = (function() {
+          function returnProp(array, prop) {
+            let props = [];
+            array.forEach(element => props.push(element[prop]));
+            return props;
           }
 
-          return returnTimes;
+          return returnProp;
         })();
 
         // Get altitude from flightpaths
@@ -169,9 +169,8 @@ function fetchData() {
         let currentLoc = [toLonLat(feature.getGeometry().getCoordinates())];
         let flightpathProps = feature.getProperties()["flightpath"];
         let flightpathCoords = currentLoc.concat(getCoordsFromFlightpath(flightpathProps));
-        // console.log(flightpathCoords);
-        // console.log(getTimesFromFlightpath(flightpathProps));
-        // console.log(getAltitudeFromFlightpath(flightpathProps));
+        // console.log(getPropFromFlightpath(flightpathProps, 'altitude'));
+        // console.log(getPropFromFlightpath(flightpathProps, 'time'));
         
         // Create a LineString representing the flightpath and style it
         let flightPath = new LineString(flightpathCoords);

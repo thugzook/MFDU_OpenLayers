@@ -99,7 +99,7 @@ server.on('message',function(msg,info){
   
 
 //sending msg
-server.send(msg,info.port,'192.168.1.160',function(error){ // 192.168.1.160 # 10.80.12.194
+server.send(msg,info.port,'127.0.0.1',function(error){ // 192.168.1.160 # 10.80.12.194
   if(error){
     client.close();
   }else{

@@ -154,17 +154,6 @@ function fetchData() {
           return returnProp;
         })();
 
-        // Get altitude from flightpaths
-        let getAltitudeFromFlightpath = (function() {
-          function returnAltitudes(array) {
-            let altitudes = [];
-            array.forEach(element => altitudes.push(element.altitude));
-            return altitudes;
-          }
-
-          return returnAltitudes;
-        })();
-
         // Calculate the flightpaths from feature origin to its next waypoint
         let currentLoc = [toLonLat(feature.getGeometry().getCoordinates())];
         let flightpathProps = feature.getProperties()["flightpath"];
@@ -204,6 +193,7 @@ function fetchData() {
 
       // add feature to map
       GeoJsonSource.addFeature(feature);
+      console.log(feature);
     })
   })
   /**

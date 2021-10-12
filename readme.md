@@ -1,36 +1,50 @@
-# OpenLayers + Parcel
 
-This example demonstrates how the `ol` package can be used with Parcel.
+# MFDU_OpenLayers
+Dependencies
+* proj4 - used for WGS84 projection coordinate transformations
+* google protobuf
+* nodemon - used to detect static file changes and re-serve them
+* express
+* parcel
 
-To get started, run the following (requires Node 12+):
+Uses Parcel to host an OpenLayers application. Serve static .geoJson files from an express server. Receive FACE compliant geographical data through a google protobuf server and parse locally using OpenLayers/Js.
+![MFDU](documentation/images/mfduServer.png)
 
-    npx create-ol-app my-app --template parcel
+## Servers
+* OpenLayers Parcel server
+* Static vector file server (`serveStatic.js`)
+* UDP packet sender (`clientSendGPB.py`)
+* UDP packet receiver (`myServer.js`)
+The minimum servers needed to run the MFDU is the OpenLayers Parcel server and the static vector file server.
 
-Then change into your new `my-app` directory and start a development server (available at http://localhost:1234):
+## OpenLayers + Parcel
+To run OpenLayers (available at http://localhost:1234):
 
-    cd my-app
     npm start
 
 To generate a build ready for production:
 
     npm run build
 
-Then deploy the contents of the `dist` directory to your server.
+## Static Vector File Server
 
+OpenLayers processes `.geoJson` files. Read more [here](https://geojson.org/).
 
 To run the static vector file server:
-`nodemon serveStatic.js`
 
-Dependencies
-* proj4 - used for WGS84 projection coordinate transformations# MFDU_OpenLayers
-* google protobuf
-* nodemon
-* express
-* parcel
+    nodemon serveStatic.js
 
-# MFDU_OpenLayers
-Omitted from the Repo
-* GTRI-proprietary software and technology
+This will make files at `/public` locally accessible at http://localhost:3000. An example API call:
 
-Uses Parcel to host an OpenLayers application. Serve static .geoJson files from an express server. Receive FACE compliant geographical data through a google protobuf server and parse locally using OpenLayers/Js.
-![MFDU](documentation/images/mfduServer.png)
+    fetch('http://localhost:3000/dir/test.geoJson', {mode: 'cors'})
+
+## UDP packet sender/receiver
+Run the UDP receiver with command:
+
+    nodemon myServer.js
+
+Send UDP packets with command:
+
+    py clientSendGPB.py
+
+UDP packets are then generated locally at `/mfduJsons`
